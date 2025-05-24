@@ -1,0 +1,837 @@
+openapi: 3.0.4
+info:
+  title: Üniversite Kütüphane Sistemi API
+  description: |
+    Bu API, üniversite kütüphanesi için çevrim içi kitap yönetim sistemini sağlar. 
+    Öğrenciler kitap arayabilir, ödünç alabilir ve iade edebilir. 
+    Kütüphane personeli kitap koleksiyonunu ve öğrenci bilgilerini yönetebilir.
+  version: 1.0.0
+  contact:
+    name: Kütüphane Sistem Yöneticisi
+    email: kutuphane@universite.edu.tr
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.kutuphane.universite.edu.tr/v1
+    description: Production server
+  - url: https://staging-api.kutuphane.universite.edu.tr/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Development server
+
+tags:
+  - name: books
+    description: Kitap yönetimi operasyonları
+  - name: students
+    description: Öğrenci yönetimi operasyonları
+  - name: loans
+    description: Kitap ödünç alma ve iade operasyonları
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+paths:
+  /books:
+    get:
+      tags:
+        - books
+      summary: Tüm kitapları getir
+      description: Kütüphanedeki tüm kitapları sayfalama ile getirir
+      parameters:
+        - name: page
+          in: query
+          description: Sayfa numarası
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: size
+          in: query
+          description: Sayfa başına kitap sayısı
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          example: 10
+        - name: title
+          in: query
+          description: Kitap başlığında arama
+          required: false
+          schema:
+            type: string
+          example: "Java"
+        - name: author
+          in: query
+          description: Yazar adında arama
+          required: false
+          schema:
+            type: string
+          example: "Mehmet"
+      responses:
+        '200':
+          description: Kitaplar başarıyla getirildi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Book'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+              example:
+                data:
+                  - id: "550e8400-e29b-41d4-a716-446655440000"
+                    title: "Java ile Programlamaya Giriş"
+                    author: "Mehmet Yılmaz"
+                    isbn: "978-0123456789"
+                    publisher: "Teknik Yayınları"
+                    pageCount: 450
+                    stock: 5
+                  - id: "550e8400-e29b-41d4-a716-446655440001"
+                    title: "Python Veri Analizi"
+                    author: "Ayşe Demir"
+                    isbn: "978-0987654321"
+                    publisher: "Bilim Yayınları"
+                    pageCount: 320
+                    stock: 3
+                pagination:
+                  currentPage: 1
+                  totalPages: 15
+                  totalItems: 150
+                  itemsPerPage: 10
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - books
+      summary: Yeni kitap ekle
+      description: Kütüphaneye yeni bir kitap ekler
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookCreate'
+            example:
+              title: "React ile Web Geliştirme"
+              author: "Fatma Çelik"
+              isbn: "978-0111222333"
+              publisher: "Modern Yayınları"
+              pageCount: 280
+              stock: 8
+      responses:
+        '201':
+          description: Kitap başarıyla oluşturuldu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /books/{id}:
+    get:
+      tags:
+        - books
+      summary: Tek kitap bilgisi getir
+      description: Belirtilen ID'ye sahip kitabın detaylarını getirir
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Kitap UUID'si
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '200':
+          description: Kitap bilgisi başarıyla getirildi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - books
+      summary: Kitap bilgilerini güncelle
+      description: Belirtilen kitabın tüm bilgilerini günceller
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Kitap UUID'si
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookUpdate'
+      responses:
+        '200':
+          description: Kitap başarıyla güncellendi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - books
+      summary: Kitabı sil
+      description: Belirtilen kitabı sistemden siler
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Kitap UUID'si
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Kitap başarıyla silindi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Kitap başarıyla silindi"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /students:
+    get:
+      tags:
+        - students
+      summary: Tüm öğrencileri getir
+      description: Sistemdeki tüm öğrenci bilgilerini getirir
+      parameters:
+        - name: isActive
+          in: query
+          description: Aktif öğrenci filtresi
+          required: false
+          schema:
+            type: boolean
+          example: true
+      responses:
+        '200':
+          description: Öğrenciler başarıyla getirildi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Student'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - students
+      summary: Yeni öğrenci ekle
+      description: Sisteme yeni bir öğrenci kaydeder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentCreate'
+      responses:
+        '201':
+          description: Öğrenci başarıyla oluşturuldu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /students/{id}:
+    get:
+      tags:
+        - students
+      summary: Tek öğrenci bilgisi getir
+      description: Belirtilen ID'ye sahip öğrencinin bilgilerini getirir
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Öğrenci UUID'si
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Öğrenci bilgisi başarıyla getirildi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    put:
+      tags:
+        - students
+      summary: Öğrenci bilgilerini güncelle
+      description: Belirtilen öğrencinin tüm bilgilerini günceller
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Öğrenci UUID'si
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentUpdate'
+      responses:
+        '200':
+          description: Öğrenci başarıyla güncellendi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    delete:
+      tags:
+        - students
+      summary: Öğrenciyi sil
+      description: Belirtilen öğrenciyi sistemden siler
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Öğrenci UUID'si
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Öğrenci başarıyla silindi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Öğrenci başarıyla silindi"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /loans:
+    get:
+      tags:
+        - loans
+      summary: Tüm ödünç almaları getir
+      description: Sistemdeki tüm kitap ödünç alma kayıtlarını getirir
+      parameters:
+        - name: status
+          in: query
+          description: Ödünç alma durumu filtresi
+          required: false
+          schema:
+            type: string
+            enum: ["ongoing", "returned", "late"]
+          example: "ongoing"
+        - name: studentId
+          in: query
+          description: Belirli bir öğrencinin ödünç almalarını filtreler
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ödünç almalar başarıyla getirildi
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Loan'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - loans
+      summary: Kitap ödünç al
+      description: Bir öğrenci için kitap ödünç alma kaydı oluşturur
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoanCreate'
+      responses:
+        '201':
+          description: Ödünç alma başarıyla oluşturuldu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /loans/{id}:
+    get:
+      tags:
+        - loans
+      summary: Tek ödünç alma bilgisi getir
+      description: Belirtilen ID'ye sahip ödünç alma kaydının detaylarını getirir
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Ödünç alma UUID'si
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ödünç alma bilgisi başarıyla getirildi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /loans/{id}/return:
+    patch:
+      tags:
+        - loans
+      summary: Kitap iade et
+      description: Ödünç alınan kitabı iade eder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Ödünç alma UUID'si
+          schema:
+            type: string
+            format: uuid
+        - name: X-Return-Date
+          in: header
+          description: İade tarihi (belirtilmezse bugün kullanılır)
+          required: false
+          schema:
+            type: string
+            format: date
+          example: "2024-01-15"
+      responses:
+        '200':
+          description: Kitap başarıyla iade edildi
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Loan'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API anahtarı ile kimlik doğrulama
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token ile kimlik doğrulama
+
+  schemas:
+    Book:
+      type: object
+      required:
+        - id
+        - title
+        - author
+        - isbn
+        - publisher
+        - pageCount
+        - stock
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Kitap benzersiz tanımlayıcısı
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          description: Kitap başlığı
+          minLength: 1
+          maxLength: 255
+          example: "Java ile Programlamaya Giriş"
+        author:
+          type: string
+          description: Kitap yazarı
+          minLength: 1
+          maxLength: 255
+          example: "Mehmet Yılmaz"
+        isbn:
+          type: string
+          pattern: '^978-\d{10}$'
+          description: ISBN-13 formatında kitap numarası
+          example: "978-0123456789"
+        publisher:
+          type: string
+          description: Yayınevi
+          minLength: 1
+          maxLength: 255
+          example: "Teknik Yayınları"
+        pageCount:
+          type: integer
+          minimum: 1
+          description: Sayfa sayısı
+          example: 450
+        stock:
+          type: integer
+          minimum: 0
+          description: Mevcut stok adedi
+          example: 5
+
+    BookCreate:
+      type: object
+      required:
+        - title
+        - author
+        - isbn
+        - publisher
+        - pageCount
+        - stock
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "React ile Web Geliştirme"
+        author:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Fatma Çelik"
+        isbn:
+          type: string
+          pattern: '^978-\d{10}$'
+          example: "978-0111222333"
+        publisher:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Modern Yayınları"
+        pageCount:
+          type: integer
+          minimum: 1
+          example: 280
+        stock:
+          type: integer
+          minimum: 0
+          example: 8
+
+    BookUpdate:
+      type: object
+      required:
+        - title
+        - author
+        - isbn
+        - publisher
+        - pageCount
+        - stock
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        author:
+          type: string
+          minLength: 1
+          maxLength: 255
+        isbn:
+          type: string
+          pattern: '^978-\d{10}$'
+        publisher:
+          type: string
+          minLength: 1
+          maxLength: 255
+        pageCount:
+          type: integer
+          minimum: 1
+        stock:
+          type: integer
+          minimum: 0
+
+    Student:
+      type: object
+      required:
+        - id
+        - name
+        - studentNumber
+        - email
+        - isActive
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Öğrenci benzersiz tanımlayıcısı
+          example: "660e8400-e29b-41d4-a716-446655440000"
+        name:
+          type: string
+          description: Öğrenci adı soyadı
+          minLength: 1
+          maxLength: 255
+          example: "Ali Veli"
+        studentNumber:
+          type: string
+          description: Öğrenci numarası
+          pattern: '^[0-9]{8,12}$'
+          example: "20220001"
+        email:
+          type: string
+          format: email
+          description: Öğrenci e-posta adresi
+          example: "ali.veli@ogrenci.universite.edu.tr"
+        isActive:
+          type: boolean
+          description: Öğrenci aktif durumu
+          example: true
+
+    StudentCreate:
+      type: object
+      required:
+        - name
+        - studentNumber
+        - email
+        - isActive
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Ayşe Yılmaz"
+        studentNumber:
+          type: string
+          pattern: '^[0-9]{8,12}$'
+          example: "20220002"
+        email:
+          type: string
+          format: email
+          example: "ayse.yilmaz@ogrenci.universite.edu.tr"
+        isActive:
+          type: boolean
+          default: true
+          example: true
+
+    StudentUpdate:
+      type: object
+      required:
+        - name
+        - studentNumber
+        - email
+        - isActive
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        studentNumber:
+          type: string
+          pattern: '^[0-9]{8,12}$'
+        email:
+          type: string
+          format: email
+        isActive:
+          type: boolean
+
+    Loan:
+      type: object
+      required:
+        - id
+        - studentId
+        - bookId
+        - loanDate
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Ödünç alma benzersiz tanımlayıcısı
+          example: "770e8400-e29b-41d4-a716-446655440000"
+        studentId:
+          type: string
+          format: uuid
+          description: Öğrenci ID'si
+          example: "660e8400-e29b-41d4-a716-446655440000"
+        bookId:
+          type: string
+          format: uuid
+          description: Kitap ID'si
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        loanDate:
+          type: string
+          format: date
+          description: Ödünç alma tarihi
+          example: "2024-01-01"
+        returnDate:
+          type: string
+          format: date
+          nullable: true
+          description: İade tarihi (null ise henüz iade edilmemiş)
+          example: "2024-01-15"
+        status:
+          type: string
+          enum: ["ongoing", "returned", "late"]
+          description: Ödünç alma durumu
+          example: "ongoing"
+
+    LoanCreate:
+      type: object
+      required:
+        - studentId
+        - bookId
+      properties:
+        studentId:
+          type: string
+          format: uuid
+          description: Öğrenci ID'si
+          example: "660e8400-e29b-41d4-a716-446655440000"
+        bookId:
+          type: string
+          format: uuid
+          description: Kitap ID'si
+          example: "550e8400-e29b-41d4-a716-446655440000"
+
+    Pagination:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          minimum: 1
+          example: 1
+        totalPages:
+          type: integer
+          minimum: 0
+          example: 15
+        totalItems:
+          type: integer
+          minimum: 0
+          example: 150
+        itemsPerPage:
+          type: integer
+          minimum: 1
+          example: 10
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Hata kodu
+          example: "VALIDATION_ERROR"
+        message:
+          type: string
+          description: Hata mesajı
+          example: "Geçersiz veri formatı"
+        details:
+          type: array
+          items:
+            type: string
+          description: Detaylı hata bilgileri
+          example: ["title alanı boş olamaz", "isbn formatı geçersiz"]
+
+  responses:
+    BadRequest:
+      description: Geçersiz istek
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "BAD_REQUEST"
+            message: "İstek verileri geçersiz"
+            details: ["title alanı gerekli", "pageCount pozitif bir sayı olmalı"]
+
+    NotFound:
+      description: Kaynak bulunamadı
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "NOT_FOUND"
+            message: "Belirtilen kaynak bulunamadı"
+
+    InternalServerError:
+      description: Sunucu hatası
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "INTERNAL_SERVER_ERROR"
+            message: "Beklenmeyen bir hata oluştu"
