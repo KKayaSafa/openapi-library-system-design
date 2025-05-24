@@ -1,6 +1,6 @@
 # Üniversite Kütüphane Sistemi OpenAPI Spesifikasyonu
 
-Bu proje, Açık Kaynak Kodlu Yazılımlar dersi kapsamında hazırlanmış bir OpenAPI 3.1 spesifikasyonudur. Bir üniversite kütüphanesinin çevrim içi sistemini yönetmek için RESTful API tasarımı içermektedir.
+Bu proje, Açık Kaynak Kodlu Yazılımlar dersi kapsamında hazırlanmış bir OpenAPI 3.0 spesifikasyonudur. Bir üniversite kütüphanesinin çevrim içi sistemini yönetmek için RESTful API tasarımı içermektedir.
 
 ## 🎯 Proje Amacı
 
@@ -13,7 +13,7 @@ gerçekleştirilebilir.
 ## 📋 Özellikler
 
 ### 🔧 Teknik Özellikler
-- **OpenAPI Sürümü**: 3.1.0
+- **OpenAPI Sürümü**: 3.0.4
 - **Format**: YAML
 - **Kimlik Doğrulama**: API Key ve Bearer Token desteği
 - **Sayfalama**: Kitap listesinde sayfalama desteği
